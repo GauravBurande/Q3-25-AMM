@@ -54,7 +54,7 @@ pub struct Swap<'info> {
       #[account(
         init_if_needed,
         payer = user,
-        associated_token::mint = mint_x,
+        associated_token::mint = mint_y,
         associated_token::authority = user,
         associated_token::token_program = token_program
     )]
