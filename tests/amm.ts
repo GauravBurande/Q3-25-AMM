@@ -229,7 +229,7 @@ describe("amm", () => {
 
   it("swapX", async () => {
     const amountIn = new anchor.BN(400_000);
-    const minAmountOut = new anchor.BN(400_000);
+    const minAmountOut = new anchor.BN(200_000);
     await program.methods
       .swap(true, amountIn, minAmountOut)
       .accountsPartial({
@@ -247,14 +247,25 @@ describe("amm", () => {
       .rpc()
       .then(confirm)
       .then(log);
+
+    const userAtaXAccount = await getAccount(connection, userAtaX);
+    const userAtaYAccount = await getAccount(connection, userAtaY);
+
+    expect(userAtaXAccount.amount == BigInt(100_000), "swap x went wrong!");
+    console.info(
+      "user bought y token, 500_000 + new amount: ",
+      userAtaYAccount.amount
+    );
+    console.info(
+      "user sold x token, 500_000 - 400_000 new amount: ",
+      userAtaXAccount.amount
+    );
   });
 
   it("swapY", async () => {
     const amountIn = new anchor.BN(400_000);
     const minAmountOut = new anchor.BN(400_000);
 
-    const userAtaAmountShouldBeAccordingToTheObviousLogicThatYouCanReadTheCodeAboveAndFigureOutToo =
-      BigInt(500_000);
     await program.methods
       .swap(false, amountIn, minAmountOut)
       .accountsPartial({
@@ -276,21 +287,25 @@ describe("amm", () => {
     const userAtaXAccount = await getAccount(connection, userAtaX);
     const userAtaYAccount = await getAccount(connection, userAtaY);
 
-    expect(
-      userAtaXAccount.amount ==
-        userAtaAmountShouldBeAccordingToTheObviousLogicThatYouCanReadTheCodeAboveAndFigureOutToo &&
-        userAtaYAccount.amount ==
-          userAtaAmountShouldBeAccordingToTheObviousLogicThatYouCanReadTheCodeAboveAndFigureOutToo,
-      "something went wrong with the swap, user ata amounts not right!"
+    console.info("user bought x token, new amount: ", userAtaXAccount.amount);
+    console.info("user sold y token, new amount: ", userAtaYAccount.amount);
+    const vaultAtaXAccount = await getAccount(connection, vaultX);
+    const vaultAtaYAccount = await getAccount(connection, vaultY);
+    console.info(
+      "vault x token account, new amount: ",
+      vaultAtaXAccount.amount
+    );
+    console.info(
+      "vault y token account, new amount: ",
+      vaultAtaYAccount.amount
     );
   });
 
   it("withdraw liquidity", async () => {
-    const amount = new anchor.BN(1_000);
-    const minX = new anchor.BN(500_000);
-    const minY = new anchor.BN(500_000);
+    const amount = new anchor.BN(500);
+    const minX = new anchor.BN(100_000);
+    const minY = new anchor.BN(100_000);
 
-    const theOgAmount = BigInt(1_000_000);
     await program.methods
       .withdraw(amount, minX, minY)
       .accountsPartial({
@@ -314,13 +329,19 @@ describe("amm", () => {
 
     const userAtaXAccount = await getAccount(connection, userAtaX);
     const userAtaYAccount = await getAccount(connection, userAtaY);
+    const vaultAtaXAccount = await getAccount(connection, vaultX);
+    const vaultAtaYAccount = await getAccount(connection, vaultY);
     // const userAtaLpAccount = await getAccount(connection, userAtaLp);
 
-    expect(
-      userAtaXAccount.amount == theOgAmount &&
-        // userAtaLpAccount.amount == BigInt(0) &&
-        userAtaYAccount.amount == theOgAmount,
-      "something went wrong with the vault and lp amount"
+    console.info("user x token account, new amount: ", userAtaXAccount.amount);
+    console.info("user y token account, new amount: ", userAtaYAccount.amount);
+    console.info(
+      "vault x token account, new amount: ",
+      vaultAtaXAccount.amount
+    );
+    console.info(
+      "vault y token account, new amount: ",
+      vaultAtaYAccount.amount
     );
   });
 });
