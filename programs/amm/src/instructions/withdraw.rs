@@ -9,7 +9,7 @@ use crate::state::Config;
 use crate::error::AmmError;
 
 #[derive(Accounts)]
-pub struct Deposit<'info> {
+pub struct Withdraw<'info> {
     #[account(mut)]
     pub user: Signer<'info>,
 
@@ -72,7 +72,7 @@ pub struct Deposit<'info> {
     pub system_program: Program<'info, System>,
 }
 
-impl Deposit<'_> {
+impl Withdraw<'_> {
     pub fn withdraw(&mut self, amount:u64, min_x: u64, min_y:u64) -> Result<()> {
         require!(self.config.locked == false, AmmError::PoolLocked);
         require!(self.user_ata_lp.amount != 0, AmmError::NoLiquidityInPool); //todo: ask if I did correct here, like check for 0 lp tokens and if the error enum is correct
