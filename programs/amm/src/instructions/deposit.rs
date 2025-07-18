@@ -25,18 +25,21 @@ pub struct Deposit<'info> {
     pub config: Account<'info, Config>,
 
     #[account(
+        mut,
         seeds=[b"lp", config.key().as_ref()],
         bump = config.lp_bump
     )]
     pub mint_lp: Account<'info, Mint>,
 
     #[account(
+        mut,
         associated_token::mint = mint_x,
         associated_token::authority = config,
         associated_token:: token_program = token_program
     )]
     pub vault_x: Account<'info, TokenAccount>,
     #[account(
+        mut,
         associated_token::mint = mint_y,
         associated_token::authority = config,
         associated_token:: token_program = token_program
