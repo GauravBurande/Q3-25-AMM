@@ -52,7 +52,7 @@ pub struct Deposit<'info> {
      pub user_ata_x: Account<'info, TokenAccount>,
       #[account(
         mut,
-        associated_token::mint = mint_x,
+        associated_token::mint = mint_y,
         associated_token::authority = user,
         associated_token::token_program = token_program
     )]

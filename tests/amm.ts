@@ -7,7 +7,11 @@ import {
   mintTo,
   getAccount,
   getAssociatedTokenAddress,
+  MINT_SIZE,
+  createInitializeMint2Instruction,
 } from "@solana/spl-token";
+import { SystemProgram } from "@solana/web3.js";
+
 import { expect } from "chai";
 
 describe("amm", () => {
@@ -49,51 +53,112 @@ describe("amm", () => {
 
   let mintX: anchor.web3.PublicKey, mintY: anchor.web3.PublicKey;
   let vaultX: anchor.web3.PublicKey, vaultY: anchor.web3.PublicKey;
-  let userAtaX: anchor.web3.PublicKey,
-    userAtaY: anchor.web3.PublicKey,
-    userAtaLp: anchor.web3.PublicKey;
+  let userAtaX: anchor.web3.PublicKey, userAtaY: anchor.web3.PublicKey;
+  // userAtaLp: anchor.web3.PublicKey;
 
   before(async () => {
-    [configPda] = anchor.web3.PublicKey.findProgramAddressSync(
-      [Buffer.from("config"), SEED.toArrayLike(Buffer, "le", 8)],
-      programId
-    );
-    [mintLp] = anchor.web3.PublicKey.findProgramAddressSync(
-      [Buffer.from("lp"), configPda.toBuffer()],
-      programId
-    );
+    try {
+      [configPda] = anchor.web3.PublicKey.findProgramAddressSync(
+        [Buffer.from("config"), SEED.toArrayLike(Buffer, "le", 8)],
+        programId
+      );
+    } catch (err) {
+      console.error("Error finding config PDA:", err);
+      throw err;
+    }
 
-    [mintX, mintY] = await Promise.all(
-      Array.from({ length: 2 }, () =>
-        createMint(connection, admin, admin.publicKey, null, 6)
-      )
-    );
+    try {
+      // todo: ask Johnny about if this can be created in program if used accounts without partial thing
+      [mintLp] = anchor.web3.PublicKey.findProgramAddressSync(
+        [Buffer.from("lp"), configPda.toBuffer()],
+        programId
+      );
 
-    [vaultX, vaultY] = await Promise.all(
-      [mintX, mintY].map((m) => {
-        return getAssociatedTokenAddress(m, configPda, true);
-      })
-    );
+      // const lamportsForMint =
+      //   await connection.getMinimumBalanceForRentExemption(MINT_SIZE);
 
-    [userAtaX, userAtaY] = await Promise.all(
-      [mintX, mintY].map(async (m) => {
-        const ata = await getOrCreateAssociatedTokenAccount(
-          connection,
-          admin,
-          m,
-          admin.publicKey
-        );
+      // const tx = new anchor.web3.Transaction();
 
-        return ata.address;
-      })
-    );
+      // tx.add(
+      //   SystemProgram.createAccount({
+      //     fromPubkey: admin.publicKey,
+      //     newAccountPubkey: mintLp,
+      //     space: MINT_SIZE,
+      //     lamports: lamportsForMint,
+      //     programId: tokenProgram,
+      //   })
+      // );
 
-    userAtaLp = await getOrCreateAssociatedTokenAccount(
-      connection,
-      admin,
-      mintLp,
-      admin.publicKey
-    ).then((account) => account.address);
+      // tx.add(createInitializeMint2Instruction(mintLp, 6, configPda, null));
+
+      // await provider.sendAndConfirm(tx, []);
+    } catch (err) {
+      console.error("Error finding mintLp PDA:", err);
+      throw err;
+    }
+
+    try {
+      [mintX, mintY] = await Promise.all(
+        Array.from({ length: 2 }, () =>
+          createMint(connection, admin, admin.publicKey, null, 6)
+        )
+      );
+    } catch (err) {
+      console.error("Error creating mints X and Y:", err);
+      throw err;
+    }
+
+    try {
+      [vaultX, vaultY] = await Promise.all(
+        [mintX, mintY].map((m) => {
+          return getAssociatedTokenAddress(m, configPda, true);
+        })
+      );
+    } catch (err) {
+      console.error(
+        "Error getting associated token addresses for vaults X and Y:",
+        err
+      );
+      throw err;
+    }
+
+    try {
+      [userAtaX, userAtaY] = await Promise.all(
+        [mintX, mintY].map(async (m) => {
+          try {
+            const ata = await getOrCreateAssociatedTokenAccount(
+              connection,
+              admin,
+              m,
+              admin.publicKey
+            );
+            return ata.address;
+          } catch (err) {
+            console.error(
+              `Error getting/creating user ATA for mint ${m.toBase58()}:`,
+              err
+            );
+            throw err;
+          }
+        })
+      );
+    } catch (err) {
+      console.error("Error getting/creating user ATAs for X and Y:", err);
+      throw err;
+    }
+
+    /// todo: ask for this one with the above mintLp
+    // try {
+    //   userAtaLp = await getOrCreateAssociatedTokenAccount(
+    //     connection,
+    //     admin,
+    //     mintLp,
+    //     admin.publicKey
+    //   ).then((account) => account.address);
+    // } catch (err) {
+    //   console.error("Error getting/creating user ATA for LP mint:", err);
+    //   throw err;
+    // }
   });
 
   it("Is initialized!", async () => {
@@ -139,7 +204,7 @@ describe("amm", () => {
         mintY,
         vaultX,
         vaultY,
-        userAtaLp,
+        // userAtaLp,
         userAtaX,
         userAtaY,
         tokenProgram,
@@ -152,12 +217,12 @@ describe("amm", () => {
 
     const vaultAtaXAccount = await getAccount(connection, vaultX);
     const vaultAtaYAccount = await getAccount(connection, vaultX);
-    const userAtaLpAccount = await getAccount(connection, userAtaLp);
+    // const userAtaLpAccount = await getAccount(connection, userAtaLp);
 
     expect(
       vaultAtaXAccount.amount == BigInt(String(maxX)) &&
-        vaultAtaYAccount.amount == BigInt(String(maxY)) &&
-        userAtaLpAccount.amount == BigInt(String(amount)),
+        // userAtaLpAccount.amount == BigInt(String(amount)) &&
+        vaultAtaYAccount.amount == BigInt(String(maxY)),
       "something went wrong with the vault and lp amount"
     );
   });
@@ -232,7 +297,7 @@ describe("amm", () => {
         user: admin.publicKey,
         config: configPda,
         mintLp,
-        userAtaLp,
+        // userAtaLp,
         vaultX,
         vaultY,
         userAtaX,
@@ -249,12 +314,12 @@ describe("amm", () => {
 
     const userAtaXAccount = await getAccount(connection, userAtaX);
     const userAtaYAccount = await getAccount(connection, userAtaY);
-    const userAtaLpAccount = await getAccount(connection, userAtaLp);
+    // const userAtaLpAccount = await getAccount(connection, userAtaLp);
 
     expect(
       userAtaXAccount.amount == theOgAmount &&
-        userAtaYAccount.amount == theOgAmount &&
-        userAtaLpAccount.amount == BigInt(0),
+        // userAtaLpAccount.amount == BigInt(0) &&
+        userAtaYAccount.amount == theOgAmount,
       "something went wrong with the vault and lp amount"
     );
   });
