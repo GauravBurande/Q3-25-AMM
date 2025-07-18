@@ -302,7 +302,7 @@ describe("amm", () => {
   });
 
   it("withdraw liquidity", async () => {
-    const amount = new anchor.BN(500);
+    const amount = new anchor.BN(1_000);
     const minX = new anchor.BN(100_000);
     const minY = new anchor.BN(100_000);
 
